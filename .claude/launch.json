@@ -5,7 +5,14 @@
       "name": "baskit-frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
-      "port": 3000
+      "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "baskit-backend",
+      "runtimeExecutable": "venv/bin/python",
+      "runtimeArgs": ["-m", "uvicorn", "backend.main:app", "--port", "8000"],
+      "port": 8000
     }
   ]
 }
