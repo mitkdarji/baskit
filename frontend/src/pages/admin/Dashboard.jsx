@@ -6,12 +6,13 @@ import {
   LineChart, Line,
 } from 'recharts';
 import {
-  LayoutDashboard, Car, Eye, MessageSquare, IndianRupee,
-  Loader2, Search, Trash2, CheckCircle, XCircle, Clock,
+  LayoutDashboard, Package, Eye, MessageSquare, IndianRupee,
+  Loader2, Search, Trash2, CheckCircle, XCircle, Clock, ShoppingBag,
 } from 'lucide-react';
 import { formatPrice, titleCase, formatDate } from '../../utils/format';
 
-const EMPTY_OVERVIEW = { total_listings: 0, available: 0, pending: 0, sold: 0, total_inquiries: 0, avg_price: 0, total_views: 0 };
+const EMPTY_OVERVIEW = { total_listings: 0, available: 0, pending: 0, sold_out: 0, total_inquiries: 0, avg_price: 0, total_views: 0 };
+const EMPTY_ORDERS = { total_orders: 0, total_revenue: 0, avg_order_value: 0 };
 
 const StatCard = ({ icon: Icon, label, value, accent }) => (
   <div className="stat-card">
@@ -28,7 +29,8 @@ const StatusBadge = ({ status }) => <span className={`badge badge-${status}`}>{t
 const Dashboard = () => {
   const { lastMessage } = useWebSocket();
   const [overview, setOverview] = useState(EMPTY_OVERVIEW);
-  const [byBodyType, setByBodyType] = useState([]);
+  const [ordersOverview, setOrdersOverview] = useState(EMPTY_ORDERS);
+  const [byCategory, setByCategory] = useState([]);
   const [trend, setTrend] = useState([]);
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
@@ -40,14 +42,16 @@ const Dashboard = () => {
 
   const loadOverview = useCallback(async () => {
     try {
-      const [ov, bt, tr] = await Promise.all([
+      const [ov, bc, tr, oo] = await Promise.all([
         adminService.getOverview(),
-        adminService.getByBodyType(),
+        adminService.getByCategory(),
         adminService.getListingsTrend(),
+        adminService.getOrdersOverview(),
       ]);
       setOverview(ov);
-      setByBodyType(bt);
+      setByCategory(bc);
       setTrend(tr);
+      setOrdersOverview(oo);
     } catch (err) { console.error(err); }
   }, []);
 
@@ -65,24 +69,24 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!lastMessage) return;
-    if (['new_listing', 'listing_status_update', 'new_inquiry'].includes(lastMessage.type)) {
+    if (['new_listing', 'listing_status_update', 'new_inquiry', 'new_order'].includes(lastMessage.type)) {
       loadOverview();
       loadListings();
     }
   }, [lastMessage, loadOverview, loadListings]);
 
-  const handleStatusChange = async (carId, status) => {
+  const handleStatusChange = async (productId, status) => {
     try {
-      await adminService.updateListingStatus(carId, status);
+      await adminService.updateListingStatus(productId, status);
       loadListings();
       loadOverview();
     } catch { }
   };
 
-  const handleDelete = async (carId) => {
+  const handleDelete = async (productId) => {
     if (!window.confirm('Delete this listing permanently?')) return;
     try {
-      await adminService.deleteListing(carId);
+      await adminService.deleteListing(productId);
       loadListings();
       loadOverview();
     } catch { }
@@ -95,7 +99,7 @@ const Dashboard = () => {
       </h1>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-        <StatCard icon={Car} label="Total Listings" value={overview.total_listings} />
+        <StatCard icon={Package} label="Total Listings" value={overview.total_listings} />
         <StatCard icon={CheckCircle} label="Available" value={overview.available} accent="var(--success)" />
         <StatCard icon={Clock} label="Pending" value={overview.pending} accent="var(--warning)" />
         <StatCard icon={IndianRupee} label="Avg. Price" value={formatPrice(overview.avg_price)} />
@@ -103,13 +107,19 @@ const Dashboard = () => {
         <StatCard icon={Eye} label="Total Views" value={overview.total_views} />
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+        <StatCard icon={ShoppingBag} label="Total Orders" value={ordersOverview.total_orders} accent="var(--secondary)" />
+        <StatCard icon={IndianRupee} label="Total Revenue" value={formatPrice(ordersOverview.total_revenue)} accent="var(--secondary)" />
+        <StatCard icon={IndianRupee} label="Avg. Order Value" value={formatPrice(ordersOverview.avg_order_value)} accent="var(--secondary)" />
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2.5rem' }}>
         <div className="panel">
-          <h3 style={{ marginBottom: '1rem', fontSize: '1rem' }}>Listings by Body Type</h3>
+          <h3 style={{ marginBottom: '1rem', fontSize: '1rem' }}>Listings by Category</h3>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={byBodyType}>
+            <BarChart data={byCategory}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="body_type" tick={{ fontSize: 11 }} />
+              <XAxis dataKey="category" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip />
               <Bar dataKey="count" fill="var(--accent)" radius={[4, 4, 0, 0]} />
@@ -141,7 +151,7 @@ const Dashboard = () => {
             <option value="">All Statuses</option>
             <option value="available">Available</option>
             <option value="pending">Pending</option>
-            <option value="sold">Sold</option>
+            <option value="sold_out">Sold Out</option>
             <option value="rejected">Rejected</option>
           </select>
         </div>
@@ -159,7 +169,7 @@ const Dashboard = () => {
                 </thead>
                 <tbody>
                   {items.map(item => (
-                    <tr key={item.car_id}>
+                    <tr key={item.product_id}>
                       <td>{item.title}</td>
                       <td>{formatPrice(item.price)}</td>
                       <td>{item.views}</td>
@@ -169,16 +179,16 @@ const Dashboard = () => {
                       <td>
                         <div style={{ display: 'flex', gap: '0.35rem' }}>
                           {item.status !== 'available' && (
-                            <button className="btn-sm btn-outline" onClick={() => handleStatusChange(item.car_id, 'available')} title="Approve">
+                            <button className="btn-sm btn-outline" onClick={() => handleStatusChange(item.product_id, 'available')} title="Approve">
                               <CheckCircle size={13} />
                             </button>
                           )}
                           {item.status !== 'rejected' && (
-                            <button className="btn-sm btn-outline" onClick={() => handleStatusChange(item.car_id, 'rejected')} title="Reject">
+                            <button className="btn-sm btn-outline" onClick={() => handleStatusChange(item.product_id, 'rejected')} title="Reject">
                               <XCircle size={13} />
                             </button>
                           )}
-                          <button className="btn-sm btn-danger" onClick={() => handleDelete(item.car_id)} title="Delete">
+                          <button className="btn-sm btn-danger" onClick={() => handleDelete(item.product_id)} title="Delete">
                             <Trash2 size={13} />
                           </button>
                         </div>

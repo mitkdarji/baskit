@@ -33,49 +33,49 @@ export const authService = {
   },
 };
 
-export const carService = {
-  getCars: async ({ make, body_type, fuel_type, transmission, condition, search, min_price, max_price, min_year, max_year, sort } = {}) => {
+export const productService = {
+  getProducts: async ({ category, brand, condition, search, min_price, max_price, sort } = {}) => {
     const params = {};
-    if (make) params.make = make;
-    if (body_type) params.body_type = body_type;
-    if (fuel_type) params.fuel_type = fuel_type;
-    if (transmission) params.transmission = transmission;
+    if (category) params.category = category;
+    if (brand) params.brand = brand;
     if (condition) params.condition = condition;
     if (search) params.search = search;
     if (min_price !== undefined && min_price !== '') params.min_price = min_price;
     if (max_price !== undefined && max_price !== '') params.max_price = max_price;
-    if (min_year !== undefined && min_year !== '') params.min_year = min_year;
-    if (max_year !== undefined && max_year !== '') params.max_year = max_year;
     if (sort) params.sort = sort;
-    const response = await api.get('/cars/', { params });
+    const response = await api.get('/products/', { params });
     return response.data;
   },
-  getCar: async (id) => {
-    const response = await api.get(`/cars/${id}`);
+  getProduct: async (id) => {
+    const response = await api.get(`/products/${id}`);
     return response.data;
   },
   getSimilar: async (id) => {
-    const response = await api.get(`/cars/${id}/similar`);
+    const response = await api.get(`/products/${id}/similar`);
     return response.data;
   },
-  getMakes: async () => {
-    const response = await api.get('/cars/makes');
+  getBrands: async () => {
+    const response = await api.get('/products/brands');
     return response.data;
   },
   getSuggestions: async (q) => {
-    const response = await api.get('/cars/suggestions', { params: { q } });
+    const response = await api.get('/products/suggestions', { params: { q } });
+    return response.data;
+  },
+  compare: async (ids) => {
+    const response = await api.get('/products/compare', { params: { ids: ids.join(',') } });
     return response.data;
   },
   createListing: async (data) => {
-    const response = await api.post('/cars/', data);
+    const response = await api.post('/products/', data);
     return response.data;
   },
   updateListing: async (id, data) => {
-    const response = await api.put(`/cars/${id}`, data);
+    const response = await api.put(`/products/${id}`, data);
     return response.data;
   },
   deleteListing: async (id) => {
-    const response = await api.delete(`/cars/${id}`);
+    const response = await api.delete(`/products/${id}`);
     return response.data;
   },
 };
@@ -104,12 +104,16 @@ export const wishlistService = {
     const response = await api.get('/wishlist/');
     return response.data;
   },
-  addToWishlist: async (carId) => {
-    const response = await api.post(`/wishlist/add/${carId}`);
+  getDeals: async () => {
+    const response = await api.get('/wishlist/deals');
     return response.data;
   },
-  removeFromWishlist: async (carId) => {
-    const response = await api.delete(`/wishlist/remove/${carId}`);
+  addToWishlist: async (productId) => {
+    const response = await api.post(`/wishlist/add/${productId}`);
+    return response.data;
+  },
+  removeFromWishlist: async (productId) => {
+    const response = await api.delete(`/wishlist/remove/${productId}`);
     return response.data;
   },
 };
@@ -127,18 +131,79 @@ export const inquiryService = {
     const response = await api.get('/inquiry/received');
     return response.data;
   },
-  downloadSpecSheet: async (carId, carTitle) => {
-    const res = await fetch(`/api/inquiry/spec-sheet/${carId}`);
+  downloadSpecSheet: async (productId, productTitle) => {
+    const res = await fetch(`/api/inquiry/spec-sheet/${productId}`);
     if (!res.ok) throw new Error('Failed to download spec sheet');
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${(carTitle || 'car').replace(/\s+/g, '_')}_spec_sheet.pdf`;
+    a.download = `${(productTitle || 'product').replace(/\s+/g, '_')}_spec_sheet.pdf`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     window.URL.revokeObjectURL(url);
+  },
+};
+
+export const cartService = {
+  getCart: async () => {
+    const response = await api.get('/cart/');
+    return response.data;
+  },
+  addToCart: async (productId, quantity = 1) => {
+    const response = await api.post(`/cart/add/${productId}`, { quantity });
+    return response.data;
+  },
+  updateItem: async (itemId, quantity) => {
+    const response = await api.put(`/cart/item/${itemId}`, { quantity });
+    return response.data;
+  },
+  removeItem: async (itemId) => {
+    const response = await api.delete(`/cart/item/${itemId}`);
+    return response.data;
+  },
+  clearCart: async () => {
+    const response = await api.delete('/cart/clear');
+    return response.data;
+  },
+};
+
+export const orderService = {
+  checkout: async (shippingAddress) => {
+    const response = await api.post('/orders/checkout', { shipping_address: shippingAddress });
+    return response.data;
+  },
+  getMyOrders: async () => {
+    const response = await api.get('/orders/my-orders');
+    return response.data;
+  },
+  getReceivedOrders: async () => {
+    const response = await api.get('/orders/received');
+    return response.data;
+  },
+  getOrder: async (id) => {
+    const response = await api.get(`/orders/${id}`);
+    return response.data;
+  },
+  updateStatus: async (id, status) => {
+    const response = await api.put(`/orders/${id}/status`, { status });
+    return response.data;
+  },
+};
+
+export const reviewService = {
+  createReview: async (data) => {
+    const response = await api.post('/reviews/', data);
+    return response.data;
+  },
+  getProductReviews: async (productId) => {
+    const response = await api.get(`/reviews/product/${productId}`);
+    return response.data;
+  },
+  getSellerTrustScore: async (sellerId) => {
+    const response = await api.get(`/reviews/seller/${sellerId}/trust-score`);
+    return response.data;
   },
 };
 
@@ -154,20 +219,24 @@ export const adminService = {
     const response = await api.get('/admin/analytics/overview');
     return response.data;
   },
-  getByBodyType: async () => {
-    const response = await api.get('/admin/analytics/by-body-type');
+  getByCategory: async () => {
+    const response = await api.get('/admin/analytics/by-category');
     return response.data;
   },
   getListingsTrend: async () => {
     const response = await api.get('/admin/analytics/listings-trend');
     return response.data;
   },
-  updateListingStatus: async (carId, status) => {
-    const response = await api.put(`/admin/listings/${carId}/status`, null, { params: { status } });
+  getOrdersOverview: async () => {
+    const response = await api.get('/admin/analytics/orders-overview');
     return response.data;
   },
-  deleteListing: async (carId) => {
-    const response = await api.delete(`/admin/listings/${carId}`);
+  updateListingStatus: async (productId, status) => {
+    const response = await api.put(`/admin/listings/${productId}/status`, null, { params: { status } });
+    return response.data;
+  },
+  deleteListing: async (productId) => {
+    const response = await api.delete(`/admin/listings/${productId}`);
     return response.data;
   },
 };

@@ -1,7 +1,10 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
-from .db_models import UserRole, EventType, FuelType, Transmission, BodyType, Condition, ListingStatus, InquiryStatus
+from .db_models import (
+    UserRole, EventType, Category, Condition, ListingStatus,
+    InquiryStatus, OrderStatus,
+)
 
 
 # ── User / Auth ──
@@ -42,34 +45,29 @@ class GoogleAuthRequest(BaseModel):
     id_token: str
 
 
-# ── Car ──
+# ── Product ──
 
-class CarBase(BaseModel):
+class ProductBase(BaseModel):
     title: str
-    make: str
-    model: str
-    year: int
+    category: Category = Category.ELECTRONICS
+    brand: str
     price: float
-    mileage: int = 0
-    fuel_type: FuelType = FuelType.PETROL
-    transmission: Transmission = Transmission.MANUAL
-    body_type: BodyType = BodyType.SEDAN
-    condition: Condition = Condition.USED
+    stock: int = 1
+    condition: Condition = Condition.NEW
     color: Optional[str] = None
     location: Optional[str] = None
     description: Optional[str] = None
     image_url: Optional[str] = None
 
-class CarCreate(CarBase):
+class ProductCreate(ProductBase):
     pass
 
-class CarUpdate(BaseModel):
+class ProductUpdate(BaseModel):
     title: Optional[str] = None
+    category: Optional[Category] = None
+    brand: Optional[str] = None
     price: Optional[float] = None
-    mileage: Optional[int] = None
-    fuel_type: Optional[FuelType] = None
-    transmission: Optional[Transmission] = None
-    body_type: Optional[BodyType] = None
+    stock: Optional[int] = None
     condition: Optional[Condition] = None
     color: Optional[str] = None
     location: Optional[str] = None
@@ -77,7 +75,7 @@ class CarUpdate(BaseModel):
     image_url: Optional[str] = None
     status: Optional[ListingStatus] = None
 
-class CarResponse(CarBase):
+class ProductResponse(ProductBase):
     id: int
     status: ListingStatus
     seller_id: Optional[int] = None
@@ -90,7 +88,7 @@ class CarResponse(CarBase):
 # ── Events ──
 
 class EventBase(BaseModel):
-    car_id: int
+    product_id: int
     event_type: EventType
 
 class EventResponse(EventBase):
@@ -101,15 +99,13 @@ class EventResponse(EventBase):
         from_attributes = True
 
 
-# ── Saved cars (wishlist) ──
+# ── Saved products (wishlist) ──
 
-class SavedCarAdd(BaseModel):
-    user_id: int
-    car_id: int
-
-class SavedCarResponse(BaseModel):
+class SavedProductResponse(BaseModel):
     id: int
-    car: CarResponse
+    product: ProductResponse
+    price_at_save: float
+    price_drop: float
     added_at: datetime
     class Config:
         from_attributes = True
@@ -118,13 +114,13 @@ class SavedCarResponse(BaseModel):
 # ── Inquiries ──
 
 class InquiryCreate(BaseModel):
-    car_id: int
+    product_id: int
     message: Optional[str] = None
     phone: Optional[str] = None
 
 class InquiryResponse(BaseModel):
     id: int
-    car_id: int
+    product_id: int
     user_id: int
     message: Optional[str] = None
     phone: Optional[str] = None
@@ -132,3 +128,76 @@ class InquiryResponse(BaseModel):
     created_at: datetime
     class Config:
         from_attributes = True
+
+
+# ── Cart ──
+
+class CartItemAdd(BaseModel):
+    quantity: int = 1
+
+class CartItemUpdate(BaseModel):
+    quantity: int
+
+class CartItemResponse(BaseModel):
+    id: int
+    product: ProductResponse
+    quantity: int
+    subtotal: float
+    class Config:
+        from_attributes = True
+
+class CartResponse(BaseModel):
+    items: List[CartItemResponse]
+    total: float
+
+
+# ── Orders ──
+
+class CheckoutRequest(BaseModel):
+    shipping_address: str
+
+class OrderItemResponse(BaseModel):
+    id: int
+    product: ProductResponse
+    quantity: int
+    price_at_purchase: float
+    class Config:
+        from_attributes = True
+
+class OrderResponse(BaseModel):
+    id: int
+    status: OrderStatus
+    total_amount: float
+    shipping_address: Optional[str] = None
+    created_at: datetime
+    items: List[OrderItemResponse]
+    class Config:
+        from_attributes = True
+
+class OrderStatusUpdate(BaseModel):
+    status: OrderStatus
+
+
+# ── Reviews ──
+
+class ReviewCreate(BaseModel):
+    product_id: int
+    rating: int
+    comment: Optional[str] = None
+
+class ReviewResponse(BaseModel):
+    id: int
+    product_id: int
+    user_id: int
+    rating: int
+    comment: Optional[str] = None
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class SellerTrustResponse(BaseModel):
+    seller_id: int
+    avg_rating: float
+    review_count: int
+    orders_fulfilled: int
+    trust_label: str

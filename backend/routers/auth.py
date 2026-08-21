@@ -15,7 +15,7 @@ from ..config import settings
 
 GOOGLE_CLIENT_ID = "867411443425-5o6ogtrs372s0r2em881iovngt8a6ii3.apps.googleusercontent.com"
 ADMIN_EMAILS = [
-    "admin@autowave.com",
+    "admin@baskit.com",
     # Add your Google emails here to make them admins automatically:
     # "your.email@gmail.com",
 ]

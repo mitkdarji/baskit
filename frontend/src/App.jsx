@@ -3,18 +3,22 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate } f
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WishlistProvider, useWishlist } from './context/WishlistContext';
+import { CartProvider, useCart } from './context/CartContext';
 import { WebSocketProvider, useWebSocket } from './context/WebSocketContext';
 import LoginPage from './pages/LoginPage';
-import CarListingPage from './pages/user/CarListingPage';
-import CarDetailPage from './pages/user/CarDetailPage';
+import ProductListingPage from './pages/user/ProductListingPage';
+import ProductDetailPage from './pages/user/ProductDetailPage';
 import WishlistPage from './pages/user/WishlistPage';
 import ProfilePage from './pages/user/ProfilePage';
-import PostCarPage from './pages/user/PostCarPage';
+import PostProductPage from './pages/user/PostProductPage';
+import CartPage from './pages/user/CartPage';
+import CheckoutPage from './pages/user/CheckoutPage';
+import ComparePage from './pages/user/ComparePage';
 import Dashboard from './pages/admin/Dashboard';
-import { carService } from './services/api';
-import { Heart, LayoutDashboard, LogOut, Search, UserCircle, Clock, X, CarFront, PlusCircle } from 'lucide-react';
+import { productService } from './services/api';
+import { Heart, LayoutDashboard, LogOut, Search, UserCircle, Clock, X, ShoppingBasket, PlusCircle, ShoppingCart, TrendingDown } from 'lucide-react';
 
-const RECENT_SEARCHES_KEY = 'autowave_recent_searches';
+const RECENT_SEARCHES_KEY = 'baskit_recent_searches';
 const MAX_RECENT = 5;
 
 const getRecentSearches = () => {
@@ -35,18 +39,21 @@ const removeRecentSearch = (term) => {
   localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent));
 };
 
-const WishlistInitializer = () => {
+const AppInitializer = () => {
   const { user } = useAuth();
-  const { refreshWishlistCount, setWishlistCount, setLastWsMessage } = useWishlist();
+  const { refreshWishlistCount, setWishlistCount, refreshDeals, setLastWsMessage } = useWishlist();
+  const { refreshCartCount, setCartCount } = useCart();
   const { lastMessage } = useWebSocket();
 
   useEffect(() => {
-    if (user) refreshWishlistCount();
-    else setWishlistCount(0);
+    if (user) { refreshWishlistCount(); refreshCartCount(); refreshDeals(); }
+    else { setWishlistCount(0); setCartCount(0); }
   }, [user]);
 
   useEffect(() => {
-    if (lastMessage) setLastWsMessage(lastMessage);
+    if (!lastMessage) return;
+    setLastWsMessage(lastMessage);
+    if (lastMessage.type === 'new_order') refreshCartCount();
   }, [lastMessage, setLastWsMessage]);
 
   return null;
@@ -62,7 +69,8 @@ const PrivateRoute = ({ children, role }) => {
 
 const Navbar = () => {
   const { user, logout } = useAuth();
-  const { wishlistCount } = useWishlist();
+  const { wishlistCount, dealsCount } = useWishlist();
+  const { cartCount } = useCart();
   const navigate = useNavigate();
   const [searchVal, setSearchVal] = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -87,7 +95,7 @@ const Navbar = () => {
     if (searchVal.trim().length >= 2) {
       debounceRef.current = setTimeout(async () => {
         try {
-          const results = await carService.getSuggestions(searchVal.trim());
+          const results = await productService.getSuggestions(searchVal.trim());
           setSuggestions(results);
           setShowDropdown(true);
         } catch { setSuggestions([]); }
@@ -119,7 +127,7 @@ const Navbar = () => {
     setSearchVal('');
     setSuggestions([]);
     setShowDropdown(false);
-    navigate(`/car/${suggestion.id}`);
+    navigate(`/product/${suggestion.id}`);
   };
 
   const handleRecentClick = (term) => {
@@ -140,7 +148,7 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="nav-container">
-        <Link to="/" className="nav-logo"><CarFront size={22} color="var(--accent)" />Auto<span>Wave</span></Link>
+        <Link to="/" className="nav-logo"><ShoppingBasket size={22} color="var(--accent)" />Bas<span>kit</span></Link>
 
         {user.role !== 'admin' && (
           <div style={{ position: 'relative', flex: 1, maxWidth: '580px' }} ref={dropdownRef}>
@@ -148,7 +156,7 @@ const Navbar = () => {
               <input
                 ref={inputRef}
                 className="nav-search-input"
-                placeholder="Search make, model or title..."
+                placeholder="Search products, brands..."
                 value={searchVal}
                 onChange={(e) => setSearchVal(e.target.value)}
                 onFocus={handleFocus}
@@ -201,12 +209,20 @@ const Navbar = () => {
           ) : (
             <>
               <Link to="/sell" className="nav-link">
-                <PlusCircle size={20} /> Sell a Car
+                <PlusCircle size={20} /> Sell
               </Link>
-              <Link to="/wishlist" className="nav-cart">
+              <Link to="/wishlist" className="nav-cart" title="Saved items">
                 <Heart size={22} />
                 {wishlistCount > 0 && <span className="cart-badge">{wishlistCount > 99 ? '99+' : wishlistCount}</span>}
-                <span>Saved</span>
+                {dealsCount > 0 && (
+                  <span className="cart-badge" style={{ left: 'auto', right: '-2px', top: '-2px', background: 'var(--success)', color: 'white' }} title={`${dealsCount} price drop${dealsCount !== 1 ? 's' : ''} on your wishlist`}>
+                    <TrendingDown size={10} />
+                  </span>
+                )}
+              </Link>
+              <Link to="/cart" className="nav-cart" title="Cart">
+                <ShoppingCart size={22} />
+                {cartCount > 0 && <span className="cart-badge">{cartCount > 99 ? '99+' : cartCount}</span>}
               </Link>
               <Link to="/profile" className="nav-link" title="My Profile">
                 <UserCircle size={20} />
@@ -229,45 +245,50 @@ function App() {
   return (
     <AuthProvider>
       <WishlistProvider>
-        <WebSocketProvider>
-        <Router>
-          <WishlistInitializer />
-          <Navbar />
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              duration: 2500,
-              style: {
-                borderRadius: '10px',
-                background: '#1B1F23',
-                color: '#F7F5F0',
-                fontSize: '0.9rem',
-                fontWeight: 500,
-                padding: '12px 16px',
-              },
-              success: {
-                iconTheme: { primary: '#1F6D46', secondary: '#fff' },
-              },
-              error: {
-                iconTheme: { primary: '#C1432E', secondary: '#fff' },
-              },
-            }}
-          />
-          <main className="container">
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/" element={<PrivateRoute role="user"><CarListingPage /></PrivateRoute>} />
-              <Route path="/car/:id" element={<PrivateRoute role="user"><CarDetailPage /></PrivateRoute>} />
-              <Route path="/wishlist" element={<PrivateRoute role="user"><WishlistPage /></PrivateRoute>} />
-              <Route path="/profile" element={<PrivateRoute role="user"><ProfilePage /></PrivateRoute>} />
-              <Route path="/sell" element={<PrivateRoute role="user"><PostCarPage /></PrivateRoute>} />
-              <Route path="/car/:id/edit" element={<PrivateRoute role="user"><PostCarPage /></PrivateRoute>} />
-              <Route path="/admin" element={<PrivateRoute role="admin"><Dashboard /></PrivateRoute>} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </main>
-        </Router>
-        </WebSocketProvider>
+        <CartProvider>
+          <WebSocketProvider>
+          <Router>
+            <AppInitializer />
+            <Navbar />
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                duration: 2500,
+                style: {
+                  borderRadius: '10px',
+                  background: '#1B1F23',
+                  color: '#F7F5F0',
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                  padding: '12px 16px',
+                },
+                success: {
+                  iconTheme: { primary: '#1F9E7A', secondary: '#fff' },
+                },
+                error: {
+                  iconTheme: { primary: '#C1432E', secondary: '#fff' },
+                },
+              }}
+            />
+            <main className="container">
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/" element={<PrivateRoute role="user"><ProductListingPage /></PrivateRoute>} />
+                <Route path="/product/:id" element={<PrivateRoute role="user"><ProductDetailPage /></PrivateRoute>} />
+                <Route path="/wishlist" element={<PrivateRoute role="user"><WishlistPage /></PrivateRoute>} />
+                <Route path="/profile" element={<PrivateRoute role="user"><ProfilePage /></PrivateRoute>} />
+                <Route path="/sell" element={<PrivateRoute role="user"><PostProductPage /></PrivateRoute>} />
+                <Route path="/product/:id/edit" element={<PrivateRoute role="user"><PostProductPage /></PrivateRoute>} />
+                <Route path="/cart" element={<PrivateRoute role="user"><CartPage /></PrivateRoute>} />
+                <Route path="/checkout" element={<PrivateRoute role="user"><CheckoutPage /></PrivateRoute>} />
+                <Route path="/compare" element={<PrivateRoute role="user"><ComparePage /></PrivateRoute>} />
+                <Route path="/admin" element={<PrivateRoute role="admin"><Dashboard /></PrivateRoute>} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </main>
+          </Router>
+          </WebSocketProvider>
+        </CartProvider>
       </WishlistProvider>
     </AuthProvider>
   );

@@ -29,7 +29,7 @@ async def update_profile(
     return user
 
 
-@router.get("/recommendations", response_model=List[schemas.CarResponse])
+@router.get("/recommendations", response_model=List[schemas.ProductResponse])
 async def get_recommendations(
     db: AsyncSession = Depends(get_db),
     user: db_models.User = Depends(get_current_user),
@@ -37,14 +37,14 @@ async def get_recommendations(
     return await recommendation_engine.get_recommendations_for_user(db, user.id)
 
 
-@router.get("/my-listings", response_model=List[schemas.CarResponse])
+@router.get("/my-listings", response_model=List[schemas.ProductResponse])
 async def my_listings(
     db: AsyncSession = Depends(get_db),
     user: db_models.User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(db_models.Car)
-        .where(db_models.Car.seller_id == user.id)
-        .order_by(db_models.Car.created_at.desc())
+        select(db_models.Product)
+        .where(db_models.Product.seller_id == user.id)
+        .order_by(db_models.Product.created_at.desc())
     )
     return result.scalars().all()

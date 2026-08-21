@@ -13,52 +13,55 @@ from backend.models import db_models
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
-CARS = [
-    # make, model, [body_type], [fuel], [transmission]
-    ("Maruti Suzuki", "Swift", "hatchback", "petrol", "manual"),
-    ("Maruti Suzuki", "Baleno", "hatchback", "petrol", "automatic"),
-    ("Hyundai", "Creta", "suv", "petrol", "automatic"),
-    ("Hyundai", "i20", "hatchback", "petrol", "manual"),
-    ("Hyundai", "Venue", "suv", "diesel", "manual"),
-    ("Tata", "Nexon", "suv", "electric", "automatic"),
-    ("Tata", "Harrier", "suv", "diesel", "automatic"),
-    ("Tata", "Tiago", "hatchback", "cng", "manual"),
-    ("Honda", "City", "sedan", "petrol", "automatic"),
-    ("Honda", "Amaze", "sedan", "petrol", "manual"),
-    ("Toyota", "Innova Crysta", "minivan", "diesel", "manual"),
-    ("Toyota", "Fortuner", "suv", "diesel", "automatic"),
-    ("Toyota", "Glanza", "hatchback", "hybrid", "automatic"),
-    ("Kia", "Seltos", "suv", "petrol", "automatic"),
-    ("Kia", "Sonet", "suv", "diesel", "manual"),
-    ("Mahindra", "XUV700", "suv", "diesel", "automatic"),
-    ("Mahindra", "Thar", "suv", "diesel", "manual"),
-    ("Skoda", "Slavia", "sedan", "petrol", "automatic"),
-    ("Volkswagen", "Virtus", "sedan", "petrol", "manual"),
-    ("MG", "Astor", "suv", "petrol", "automatic"),
-    ("MG", "ZS EV", "suv", "electric", "automatic"),
-    ("BMW", "3 Series", "sedan", "petrol", "automatic"),
-    ("Mercedes-Benz", "C-Class", "sedan", "diesel", "automatic"),
-    ("Audi", "A4", "sedan", "petrol", "automatic"),
-    ("Renault", "Kwid", "hatchback", "petrol", "manual"),
+# title, category, brand, base_price, condition
+PRODUCTS = [
+    ("Wireless Noise-Cancelling Headphones", "electronics", "Sony", 24999, "new"),
+    ("4K Smart TV 55-inch", "electronics", "Samsung", 54999, "new"),
+    ("True Wireless Earbuds", "electronics", "boAt", 2499, "new"),
+    ("Mechanical Gaming Keyboard", "electronics", "Logitech", 6999, "new"),
+    ("Fitness Smartwatch", "electronics", "Fitbit", 12999, "new"),
+    ("Portable Bluetooth Speaker", "electronics", "JBL", 3499, "refurbished"),
+    ("Men's Slim Fit Denim Jacket", "fashion", "Levis", 3999, "new"),
+    ("Women's Running Sneakers", "fashion", "Nike", 5999, "new"),
+    ("Classic Leather Wallet", "fashion", "Fossil", 2299, "new"),
+    ("Cotton Crew Neck T-Shirt Pack", "fashion", "H&M", 1299, "new"),
+    ("Aviator Sunglasses", "fashion", "Ray-Ban", 7499, "new"),
+    ("7-in-1 Induction Cooktop", "home_kitchen", "Prestige", 3299, "new"),
+    ("Air Fryer 4.5L", "home_kitchen", "Philips", 8999, "new"),
+    ("Non-Stick Cookware Set", "home_kitchen", "Prestige", 4499, "new"),
+    ("Robot Vacuum Cleaner", "home_kitchen", "Xiaomi", 18999, "new"),
+    ("Memory Foam Pillow Set", "home_kitchen", "Wakefit", 1899, "new"),
+    ("Vitamin C Serum", "beauty", "Minimalist", 599, "new"),
+    ("Hair Dryer 2200W", "beauty", "Philips", 1799, "new"),
+    ("Electric Trimmer", "beauty", "Philips", 1299, "refurbished"),
+    ("Matte Lipstick Set", "beauty", "Maybelline", 899, "new"),
+    ("Yoga Mat Pro", "sports_outdoors", "Decathlon", 1499, "new"),
+    ("Adjustable Dumbbell Set", "sports_outdoors", "Kore", 4999, "new"),
+    ("Trekking Backpack 50L", "sports_outdoors", "Wildcraft", 3299, "new"),
+    ("Badminton Racket Pro", "sports_outdoors", "Yonex", 2999, "new"),
+    ("Atomic Habits", "books", "Penguin", 399, "new"),
+    ("The Psychology of Money", "books", "HarperCollins", 349, "new"),
+    ("Sapiens: A Brief History", "books", "Penguin", 499, "used"),
+    ("Building a Second Brain", "books", "Simon & Schuster", 599, "new"),
+    ("Remote Control Racing Car", "toys_games", "Hot Wheels", 1999, "new"),
+    ("Building Blocks Set 500pc", "toys_games", "Lego", 5999, "new"),
+    ("Board Game Strategy Pack", "toys_games", "Hasbro", 1299, "new"),
+    ("Organic Almonds 1kg", "grocery", "Nutraj", 899, "new"),
+    ("Cold Pressed Olive Oil 1L", "grocery", "Figaro", 749, "new"),
+    ("Assorted Green Tea Box", "grocery", "Tetley", 349, "new"),
 ]
 
-COLORS = ["White", "Silver", "Black", "Red", "Blue", "Grey", "Beige"]
+COLORS = ["Black", "White", "Silver", "Blue", "Red", "Grey", "Beige", None]
 LOCATIONS = ["Ahmedabad", "Surat", "Vadodara", "Mumbai", "Pune", "Delhi", "Bengaluru", "Rajkot"]
 
-CURRENT_YEAR = 2026
-
-BODY_TYPE_FACTOR = {
-    "sedan": 1.0, "hatchback": 0.85, "suv": 1.25, "coupe": 1.15,
-    "truck": 1.3, "convertible": 1.4, "wagon": 0.95, "minivan": 1.05,
-}
-FUEL_FACTOR = {
-    "petrol": 1.0, "diesel": 1.05, "hybrid": 1.15, "electric": 1.3, "cng": 0.9,
-}
-TRANSMISSION_FACTOR = {"manual": 0.95, "automatic": 1.08}
-
-
-def estimate_base_price(body_type, fuel_type, transmission):
-    return 750000 * BODY_TYPE_FACTOR[body_type] * FUEL_FACTOR[fuel_type] * TRANSMISSION_FACTOR[transmission]
+REVIEW_COMMENTS = [
+    "Great quality, exactly as described.",
+    "Fast delivery and works perfectly.",
+    "Good value for the price.",
+    "Packaging could be better, but the product itself is solid.",
+    "Exceeded my expectations, highly recommend.",
+    "Decent, does the job.",
+]
 
 
 async def generate_data():
@@ -67,17 +70,17 @@ async def generate_data():
             await conn.run_sync(Base.metadata.create_all)
 
         # 1. Admin account
-        admin_email = "admin@autowave.com"
+        admin_email = "admin@baskit.com"
         result = await db.execute(select(db_models.User).filter(db_models.User.email == admin_email))
         if not result.scalars().first():
             db.add(db_models.User(
                 email=admin_email,
-                name="AutoWave Admin",
+                name="Baskit Admin",
                 hashed_password=pwd_context.hash("admin123"),
                 role=db_models.UserRole.ADMIN,
             ))
 
-        # 2. Seller/user accounts
+        # 2. Seller/buyer accounts
         sellers = []
         for i in range(5):
             email = f"user{i}@example.com"
@@ -97,42 +100,102 @@ async def generate_data():
                 sellers.append(existing)
         await db.commit()
 
-        # 3. Car listings
-        existing_count = await db.scalar(select(db_models.Car.id).limit(1))
+        # 3. Product listings
+        existing_count = await db.scalar(select(db_models.Product.id).limit(1))
         if existing_count:
-            print("Cars already seeded, skipping.")
-        else:
-            for i, (make, model, body_type, fuel_type, transmission) in enumerate(CARS):
-                year = random.randint(2015, CURRENT_YEAR)
-                age = CURRENT_YEAR - year
-                mileage = max(int(age * random.uniform(6000, 14000)), 500)
-                base = estimate_base_price(body_type, fuel_type, transmission)
-                depreciation = max(1 - age * 0.06, 0.25)
-                price = round(base * depreciation * random.uniform(0.9, 1.1), -3)
+            print("Products already seeded, skipping.")
+            return
 
-                car = db_models.Car(
-                    title=f"{year} {make} {model}",
-                    make=make,
-                    model=model,
-                    year=year,
-                    price=price,
-                    mileage=mileage,
-                    fuel_type=db_models.FuelType(fuel_type),
-                    transmission=db_models.Transmission(transmission),
-                    body_type=db_models.BodyType(body_type),
-                    condition=random.choice(list(db_models.Condition)),
-                    color=random.choice(COLORS),
-                    location=random.choice(LOCATIONS),
-                    description=f"Well-maintained {make} {model}, single owner, all service records available.",
-                    image_url=None,
-                    status=db_models.ListingStatus.AVAILABLE,
-                    seller_id=sellers[i % len(sellers)].id,
-                    views=random.randint(5, 400),
-                    created_at=datetime.utcnow() - timedelta(days=random.randint(0, 20)),
-                )
-                db.add(car)
-
+        products = []
+        for i, (title, category, brand, base_price, condition) in enumerate(PRODUCTS):
+            price = round(base_price * random.uniform(0.92, 1.08), -1)
+            product = db_models.Product(
+                title=title,
+                category=db_models.Category(category),
+                brand=brand,
+                price=price,
+                stock=random.randint(3, 60),
+                condition=db_models.Condition(condition),
+                color=random.choice(COLORS),
+                location=random.choice(LOCATIONS),
+                description=f"{brand} {title} — sourced from a verified seller, ready to ship.",
+                image_url=None,
+                status=db_models.ListingStatus.AVAILABLE,
+                seller_id=sellers[i % len(sellers)].id,
+                views=random.randint(5, 400),
+                created_at=datetime.utcnow() - timedelta(days=random.randint(0, 20)),
+            )
+            db.add(product)
+            products.append(product)
         await db.commit()
+        for p in products:
+            await db.refresh(p)
+
+        # 4. Price history (one row per product; simulate a couple of recent price drops)
+        for i, product in enumerate(products):
+            db.add(db_models.PriceHistory(
+                product_id=product.id,
+                price=product.price,
+                recorded_at=product.created_at,
+            ))
+            if i % 6 == 0:
+                # Simulate an earlier, higher price so this listing shows as a "deal".
+                db.add(db_models.PriceHistory(
+                    product_id=product.id,
+                    price=round(product.price * 1.15, -1),
+                    recorded_at=product.created_at,
+                ))
+        await db.commit()
+
+        # 5. Wishlist a few products for demo users, at a higher price_at_save than current
+        # (so the deal-alerts feature has something to show immediately).
+        for i, buyer in enumerate(sellers):
+            for product in random.sample(products, 3):
+                saved_price = product.price * 1.1 if (i + product.id) % 3 == 0 else product.price
+                db.add(db_models.SavedProduct(
+                    user_id=buyer.id,
+                    product_id=product.id,
+                    price_at_save=round(saved_price, -1),
+                    added_at=datetime.utcnow() - timedelta(days=random.randint(0, 10)),
+                ))
+        await db.commit()
+
+        # 6. A handful of delivered orders + reviews so seller trust scores aren't all "New Seller"
+        for buyer in sellers:
+            other_products = [p for p in products if p.seller_id != buyer.id]
+            chosen = random.sample(other_products, min(3, len(other_products)))
+            order = db_models.Order(
+                user_id=buyer.id,
+                total_amount=sum(p.price for p in chosen),
+                status=db_models.OrderStatus.DELIVERED,
+                shipping_address=f"{buyer.name}, {random.choice(LOCATIONS)}, India",
+                created_at=datetime.utcnow() - timedelta(days=random.randint(1, 15)),
+            )
+            db.add(order)
+            await db.flush()
+
+            for product in chosen:
+                order_item = db_models.OrderItem(
+                    order_id=order.id,
+                    product_id=product.id,
+                    seller_id=product.seller_id,
+                    quantity=1,
+                    price_at_purchase=product.price,
+                )
+                db.add(order_item)
+                await db.flush()
+
+                if random.random() < 0.7:
+                    db.add(db_models.Review(
+                        product_id=product.id,
+                        user_id=buyer.id,
+                        order_item_id=order_item.id,
+                        rating=random.randint(3, 5),
+                        comment=random.choice(REVIEW_COMMENTS),
+                        created_at=datetime.utcnow() - timedelta(days=random.randint(0, 10)),
+                    ))
+        await db.commit()
+
         print("Seed data generated successfully.")
 
 

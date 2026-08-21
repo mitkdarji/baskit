@@ -3,10 +3,12 @@ uvicorn
 sqlalchemy[asyncio]
 aiosqlite
 pydantic-settings
+email-validator
 python-jose[cryptography]
 passlib[bcrypt]
 redis
 python-multipart
 google-auth
+requests
 reportlab
 httpx

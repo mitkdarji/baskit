@@ -4,12 +4,15 @@ import { wishlistService } from '../services/api';
 const WishlistContext = createContext({
   wishlistCount: 0,
   refreshWishlistCount: () => {},
+  dealsCount: 0,
+  refreshDeals: () => {},
   lastWsMessage: null,
   setLastWsMessage: () => {},
 });
 
 export const WishlistProvider = ({ children }) => {
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [dealsCount, setDealsCount] = useState(0);
   const [lastWsMessage, setLastWsMessage] = useState(null);
 
   const refreshWishlistCount = useCallback(async () => {
@@ -23,7 +26,18 @@ export const WishlistProvider = ({ children }) => {
     }
   }, []);
 
-  // Auto-refresh wishlist count when WebSocket reports a wishlist change for this user
+  const refreshDeals = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) { setDealsCount(0); return; }
+    try {
+      const data = await wishlistService.getDeals();
+      setDealsCount((data || []).length);
+    } catch {
+      setDealsCount(0);
+    }
+  }, []);
+
+  // Auto-refresh wishlist/deals state when the WebSocket reports a relevant event.
   useEffect(() => {
     if (!lastWsMessage) return;
     const msg = lastWsMessage;
@@ -32,10 +46,17 @@ export const WishlistProvider = ({ children }) => {
     if (msg.type === 'wishlist_update' && msg.user_id === userId) {
       refreshWishlistCount();
     }
-  }, [lastWsMessage, refreshWishlistCount]);
+    if (msg.type === 'price_drop') {
+      refreshDeals();
+    }
+  }, [lastWsMessage, refreshWishlistCount, refreshDeals]);
 
   return (
-    <WishlistContext.Provider value={{ wishlistCount, setWishlistCount, refreshWishlistCount, lastWsMessage, setLastWsMessage }}>
+    <WishlistContext.Provider value={{
+      wishlistCount, setWishlistCount, refreshWishlistCount,
+      dealsCount, refreshDeals,
+      lastWsMessage, setLastWsMessage,
+    }}>
       {children}
     </WishlistContext.Provider>
   );

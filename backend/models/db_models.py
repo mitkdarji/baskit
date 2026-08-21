@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum as SQLEnum, Boolean, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum as SQLEnum, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -21,56 +21,39 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-class FuelType(str, enum.Enum):
-    PETROL = "petrol"
-    DIESEL = "diesel"
-    ELECTRIC = "electric"
-    HYBRID = "hybrid"
-    CNG = "cng"
-
-
-class Transmission(str, enum.Enum):
-    MANUAL = "manual"
-    AUTOMATIC = "automatic"
-
-
-class BodyType(str, enum.Enum):
-    SEDAN = "sedan"
-    SUV = "suv"
-    HATCHBACK = "hatchback"
-    COUPE = "coupe"
-    TRUCK = "truck"
-    CONVERTIBLE = "convertible"
-    WAGON = "wagon"
-    MINIVAN = "minivan"
+class Category(str, enum.Enum):
+    ELECTRONICS = "electronics"
+    FASHION = "fashion"
+    HOME_KITCHEN = "home_kitchen"
+    BEAUTY = "beauty"
+    SPORTS_OUTDOORS = "sports_outdoors"
+    BOOKS = "books"
+    TOYS_GAMES = "toys_games"
+    GROCERY = "grocery"
 
 
 class Condition(str, enum.Enum):
     NEW = "new"
     USED = "used"
-    CERTIFIED = "certified_pre_owned"
+    REFURBISHED = "refurbished"
 
 
 class ListingStatus(str, enum.Enum):
     PENDING = "pending"
     AVAILABLE = "available"
-    SOLD = "sold"
+    SOLD_OUT = "sold_out"
     REJECTED = "rejected"
 
 
-class Car(Base):
-    __tablename__ = "cars"
+class Product(Base):
+    __tablename__ = "products"
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
-    make = Column(String, index=True)
-    model = Column(String, index=True)
-    year = Column(Integer, index=True)
+    category = Column(SQLEnum(Category), default=Category.ELECTRONICS, index=True)
+    brand = Column(String, index=True)
     price = Column(Float, index=True)
-    mileage = Column(Integer, default=0)
-    fuel_type = Column(SQLEnum(FuelType), default=FuelType.PETROL)
-    transmission = Column(SQLEnum(Transmission), default=Transmission.MANUAL)
-    body_type = Column(SQLEnum(BodyType), default=BodyType.SEDAN)
-    condition = Column(SQLEnum(Condition), default=Condition.USED)
+    stock = Column(Integer, default=1)
+    condition = Column(SQLEnum(Condition), default=Condition.NEW)
     color = Column(String, nullable=True)
     location = Column(String, nullable=True)
     description = Column(Text, nullable=True)
@@ -81,6 +64,14 @@ class Car(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     seller = relationship("User")
+
+
+class PriceHistory(Base):
+    __tablename__ = "price_history"
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), index=True)
+    price = Column(Float)
+    recorded_at = Column(DateTime, default=datetime.utcnow)
 
 
 class EventType(str, enum.Enum):
@@ -94,19 +85,20 @@ class Event(Base):
     __tablename__ = "events"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    car_id = Column(Integer, ForeignKey("cars.id"))
+    product_id = Column(Integer, ForeignKey("products.id"))
     event_type = Column(SQLEnum(EventType))
     timestamp = Column(DateTime, default=datetime.utcnow)
 
 
-class SavedCar(Base):
-    __tablename__ = "saved_cars"
+class SavedProduct(Base):
+    __tablename__ = "saved_products"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    car_id = Column(Integer, ForeignKey("cars.id"))
+    product_id = Column(Integer, ForeignKey("products.id"))
+    price_at_save = Column(Float, default=0.0)
     added_at = Column(DateTime, default=datetime.utcnow)
 
-    car = relationship("Car")
+    product = relationship("Product")
 
 
 class InquiryStatus(str, enum.Enum):
@@ -119,11 +111,73 @@ class Inquiry(Base):
     __tablename__ = "inquiries"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    car_id = Column(Integer, ForeignKey("cars.id"))
+    product_id = Column(Integer, ForeignKey("products.id"))
     message = Column(Text, nullable=True)
     phone = Column(String, nullable=True)
     status = Column(SQLEnum(InquiryStatus), default=InquiryStatus.NEW)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    car = relationship("Car")
+    product = relationship("Product")
+    user = relationship("User")
+
+
+class Cart(Base):
+    __tablename__ = "carts"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, index=True)
+
+
+class CartItem(Base):
+    __tablename__ = "cart_items"
+    id = Column(Integer, primary_key=True, index=True)
+    cart_id = Column(Integer, ForeignKey("carts.id"), index=True)
+    product_id = Column(Integer, ForeignKey("products.id"))
+    quantity = Column(Integer, default=1)
+
+    product = relationship("Product")
+
+
+class OrderStatus(str, enum.Enum):
+    PLACED = "placed"
+    SHIPPED = "shipped"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
+
+
+class Order(Base):
+    __tablename__ = "orders"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    total_amount = Column(Float, default=0.0)
+    status = Column(SQLEnum(OrderStatus), default=OrderStatus.PLACED)
+    shipping_address = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    items = relationship("OrderItem", back_populates="order")
+
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), index=True)
+    product_id = Column(Integer, ForeignKey("products.id"))
+    seller_id = Column(Integer, ForeignKey("users.id"), index=True)
+    quantity = Column(Integer, default=1)
+    price_at_purchase = Column(Float, default=0.0)
+
+    order = relationship("Order", back_populates="items")
+    product = relationship("Product")
+
+
+class Review(Base):
+    __tablename__ = "reviews"
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    order_item_id = Column(Integer, ForeignKey("order_items.id"), nullable=True)
+    rating = Column(Integer)
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    product = relationship("Product")
     user = relationship("User")

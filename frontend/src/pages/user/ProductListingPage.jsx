@@ -1,39 +1,65 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { carService, userService } from '../../services/api';
+import { productService, userService, cartService } from '../../services/api';
 import { useWebSocket } from '../../context/WebSocketContext';
+import { useCart } from '../../context/CartContext';
 import toast from 'react-hot-toast';
-import { Loader2, SlidersHorizontal, X, CarFront, Gauge, Fuel, Cog, TrendingUp } from 'lucide-react';
-import { formatPrice, formatMileage, titleCase } from '../../utils/format';
+import { Loader2, SlidersHorizontal, X, Package, TrendingUp, ShoppingCart } from 'lucide-react';
+import { formatPrice, titleCase } from '../../utils/format';
 
-const DEFAULT_IMG = null;
+const CATEGORIES = ['electronics', 'fashion', 'home_kitchen', 'beauty', 'sports_outdoors', 'books', 'toys_games', 'grocery'];
+const CONDITIONS = ['new', 'used', 'refurbished'];
 
-const BODY_TYPES = ['sedan', 'suv', 'hatchback', 'coupe', 'truck', 'convertible', 'wagon', 'minivan'];
-const FUEL_TYPES = ['petrol', 'diesel', 'electric', 'hybrid', 'cng'];
-const TRANSMISSIONS = ['manual', 'automatic'];
-const CONDITIONS = ['new', 'used', 'certified_pre_owned'];
+const ProductCard = ({ product }) => {
+  const { refreshCartCount } = useCart();
+  const [adding, setAdding] = useState(false);
 
-const CarCard = ({ car }) => (
-  <Link to={`/car/${car.id}`} className="card" style={{ textDecoration: 'none', color: 'inherit' }}>
-    <div className="image-container">
-      {car.image_url ? (
-        <img src={car.image_url} alt={car.title} onError={(e) => { e.target.style.display = 'none'; }} />
-      ) : (
-        <CarFront size={40} />
-      )}
-    </div>
-    <div className="title-clamp">{car.title}</div>
-    <div className="spec-plate">
-      <span>{formatMileage(car.mileage)}</span>
-      <span className="dot">&bull;</span>
-      <span>{titleCase(car.fuel_type)}</span>
-      <span className="dot">&bull;</span>
-      <span>{titleCase(car.transmission)}</span>
-    </div>
-    <div className="price-tag">{formatPrice(car.price)}</div>
-    <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.2rem' }}>{car.location || 'Location N/A'}</div>
-  </Link>
-);
+  const handleAddToCart = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!localStorage.getItem('token')) return;
+    setAdding(true);
+    try {
+      await cartService.addToCart(product.id, 1);
+      refreshCartCount();
+      toast.success('Added to cart');
+    } catch {
+      toast.error('Failed to add to cart');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  return (
+    <Link to={`/product/${product.id}`} className="card" style={{ textDecoration: 'none', color: 'inherit' }}>
+      <div className="image-container">
+        {product.image_url ? (
+          <img src={product.image_url} alt={product.title} onError={(e) => { e.target.style.display = 'none'; }} />
+        ) : (
+          <Package size={40} />
+        )}
+      </div>
+      <div className="title-clamp">{product.title}</div>
+      <div className="spec-plate">
+        <span>{product.brand}</span>
+        <span className="dot">&bull;</span>
+        <span>{titleCase(product.category)}</span>
+      </div>
+      <div className="price-tag">{formatPrice(product.price)}</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.6rem' }}>
+        <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>{product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}</span>
+        <button
+          onClick={handleAddToCart}
+          disabled={adding || product.stock <= 0}
+          className="btn-sm btn-accent"
+          style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+        >
+          <ShoppingCart size={13} /> Add
+        </button>
+      </div>
+    </Link>
+  );
+};
 
 const FilterChips = ({ options, value, onChange }) => (
   <div className="filter-chip-row">
@@ -50,24 +76,19 @@ const FilterChips = ({ options, value, onChange }) => (
   </div>
 );
 
-const CarListingPage = () => {
+const ProductListingPage = () => {
   const { lastMessage } = useWebSocket();
   const [searchParams] = useSearchParams();
-  const [cars, setCars] = useState([]);
+  const [products, setProducts] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(searchParams.get('q') || '');
-  const [make, setMake] = useState('');
-  const [bodyType, setBodyType] = useState('');
-  const [fuelType, setFuelType] = useState('');
-  const [transmission, setTransmission] = useState('');
+  const [brand, setBrand] = useState('');
+  const [category, setCategory] = useState('');
   const [condition, setCondition] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
-  const [minYear, setMinYear] = useState('');
-  const [maxYear, setMaxYear] = useState('');
   const [sort, setSort] = useState('');
-  const [showFilters, setShowFilters] = useState(true);
   const debounceRef = useRef(null);
 
   useEffect(() => {
@@ -77,33 +98,29 @@ const CarListingPage = () => {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => { fetchCars(); }, 300);
+    debounceRef.current = setTimeout(() => { fetchProducts(); }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [search, make, bodyType, fuelType, transmission, condition, minPrice, maxPrice, minYear, maxYear, sort]);
+  }, [search, brand, category, condition, minPrice, maxPrice, sort]);
 
   useEffect(() => {
     userService.getRecommendations().then(setRecommendations).catch(() => {});
   }, []);
 
-  const fetchCars = async () => {
+  const fetchProducts = async () => {
     try {
       setLoading(true);
-      const list = await carService.getCars({
-        make: make || undefined,
-        body_type: bodyType || undefined,
-        fuel_type: fuelType || undefined,
-        transmission: transmission || undefined,
+      const list = await productService.getProducts({
+        brand: brand || undefined,
+        category: category || undefined,
         condition: condition || undefined,
         search: search.trim() || undefined,
         min_price: minPrice || undefined,
         max_price: maxPrice || undefined,
-        min_year: minYear || undefined,
-        max_year: maxYear || undefined,
         sort: sort || undefined,
       });
-      setCars(list);
+      setProducts(list);
     } catch (err) {
-      console.error('Failed to fetch cars:', err);
+      console.error('Failed to fetch products:', err);
     } finally {
       setLoading(false);
     }
@@ -112,16 +129,16 @@ const CarListingPage = () => {
   useEffect(() => {
     if (!lastMessage) return;
     if (lastMessage.type === 'new_listing') {
-      toast(`New listing: ${lastMessage.title}`, { icon: '🚗' });
+      toast(`New listing: ${lastMessage.title}`, { icon: '🛍️' });
     }
   }, [lastMessage]);
 
   const clearFilters = () => {
-    setMake(''); setBodyType(''); setFuelType(''); setTransmission(''); setCondition('');
-    setMinPrice(''); setMaxPrice(''); setMinYear(''); setMaxYear(''); setSort(''); setSearch('');
+    setBrand(''); setCategory(''); setCondition('');
+    setMinPrice(''); setMaxPrice(''); setSort(''); setSearch('');
   };
 
-  const hasActiveFilters = make || bodyType || fuelType || transmission || condition || minPrice || maxPrice || minYear || maxYear || sort || search;
+  const hasActiveFilters = brand || category || condition || minPrice || maxPrice || sort || search;
 
   return (
     <div>
@@ -131,9 +148,9 @@ const CarListingPage = () => {
             <TrendingUp color="var(--accent)" size={22} /> Recommended For You
           </h2>
           <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-            {recommendations.slice(0, 6).map(car => (
-              <div key={car.id} style={{ minWidth: '250px' }}>
-                <CarCard car={car} />
+            {recommendations.slice(0, 6).map(product => (
+              <div key={product.id} style={{ minWidth: '250px' }}>
+                <ProductCard product={product} />
               </div>
             ))}
           </div>
@@ -152,23 +169,13 @@ const CarListingPage = () => {
           </div>
 
           <div className="filter-group">
-            <div className="filter-title">Make</div>
-            <input className="input" style={{ marginBottom: 0 }} placeholder="e.g. Hyundai" value={make} onChange={(e) => setMake(e.target.value)} />
+            <div className="filter-title">Brand</div>
+            <input className="input" style={{ marginBottom: 0 }} placeholder="e.g. Sony" value={brand} onChange={(e) => setBrand(e.target.value)} />
           </div>
 
           <div className="filter-group">
-            <div className="filter-title">Body Type</div>
-            <FilterChips options={BODY_TYPES} value={bodyType} onChange={setBodyType} />
-          </div>
-
-          <div className="filter-group">
-            <div className="filter-title">Fuel Type</div>
-            <FilterChips options={FUEL_TYPES} value={fuelType} onChange={setFuelType} />
-          </div>
-
-          <div className="filter-group">
-            <div className="filter-title">Transmission</div>
-            <FilterChips options={TRANSMISSIONS} value={transmission} onChange={setTransmission} />
+            <div className="filter-title">Category</div>
+            <FilterChips options={CATEGORIES} value={category} onChange={setCategory} />
           </div>
 
           <div className="filter-group">
@@ -185,29 +192,20 @@ const CarListingPage = () => {
           </div>
 
           <div className="filter-group">
-            <div className="filter-title">Year</div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input className="input" type="number" placeholder="From" style={{ marginBottom: 0 }} value={minYear} onChange={(e) => setMinYear(e.target.value)} />
-              <input className="input" type="number" placeholder="To" style={{ marginBottom: 0 }} value={maxYear} onChange={(e) => setMaxYear(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="filter-group">
             <div className="filter-title">Sort By</div>
             <select className="input" style={{ marginBottom: 0 }} value={sort} onChange={(e) => setSort(e.target.value)}>
               <option value="">Newest First</option>
               <option value="price_asc">Price: Low to High</option>
               <option value="price_desc">Price: High to Low</option>
-              <option value="year_desc">Year: Newest</option>
-              <option value="mileage_asc">Mileage: Lowest</option>
+              <option value="views_desc">Most Popular</option>
             </select>
           </div>
         </aside>
 
         <section>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-            <h1 style={{ fontSize: '1.6rem' }}>{search ? `Results for "${search}"` : 'Browse Cars'}</h1>
-            {!loading && <span style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>{cars.length} listing{cars.length !== 1 ? 's' : ''}</span>}
+            <h1 style={{ fontSize: '1.6rem' }}>{search ? `Results for "${search}"` : 'Browse Products'}</h1>
+            {!loading && <span style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>{products.length} product{products.length !== 1 ? 's' : ''}</span>}
           </div>
 
           {loading && (
@@ -216,10 +214,10 @@ const CarListingPage = () => {
             </div>
           )}
 
-          {!loading && cars.length === 0 && (
+          {!loading && products.length === 0 && (
             <div className="empty-state">
-              <CarFront size={56} color="var(--muted)" />
-              <h3 style={{ margin: '0.5rem 0 0.25rem', fontWeight: 700, fontSize: '1.2rem' }}>No cars found</h3>
+              <Package size={56} color="var(--muted)" />
+              <h3 style={{ margin: '0.5rem 0 0.25rem', fontWeight: 700, fontSize: '1.2rem' }}>No products found</h3>
               <p style={{ color: 'var(--muted)', margin: '0 0 1.25rem', fontSize: '0.95rem' }}>
                 Try adjusting your filters or search terms.
               </p>
@@ -231,9 +229,9 @@ const CarListingPage = () => {
             </div>
           )}
 
-          {!loading && cars.length > 0 && (
+          {!loading && products.length > 0 && (
             <div className="grid">
-              {cars.map(car => <CarCard key={car.id} car={car} />)}
+              {products.map(product => <ProductCard key={product.id} product={product} />)}
             </div>
           )}
         </section>
@@ -242,4 +240,4 @@ const CarListingPage = () => {
   );
 };
 
-export default CarListingPage;
+export default ProductListingPage;

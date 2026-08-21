@@ -10,12 +10,12 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* ── AutoWave Palette: asphalt + signal amber ── */
-  --primary: #1B1F23;         /* asphalt charcoal */
+  /* ── Baskit Palette: charcoal + basket teal ── */
+  --primary: #1B1F23;         /* charcoal */
   --primary-hover: #2A2F35;
-  --accent: #E8862A;          /* signal amber */
-  --accent-hover: #D3741C;
-  --secondary: #3B6E8F;       /* steel blue */
+  --accent: #1F9E7A;          /* basket teal */
+  --accent-hover: #17805F;
+  --secondary: #6E5AD6;       /* violet, for trust/rating accents */
   --background: #F7F5F0;      /* ivory */
   --card: #ffffff;
   --text: #1B1F23;
@@ -27,6 +27,7 @@
   --danger-bg: #fbe7e2;
   --warning: #B9820B;
   --warning-bg: #fbf1da;
+  --star: #E8862A;
   --font-display: 'Oswald', 'Inter', sans-serif;
   --font-mono: 'Roboto Mono', monospace;
 }
@@ -399,9 +400,81 @@ label {
 
 .badge-available { background: var(--success-bg); color: var(--success); }
 .badge-pending    { background: var(--warning-bg); color: var(--warning); }
-.badge-sold       { background: var(--danger-bg); color: var(--danger); }
+.badge-sold_out   { background: var(--danger-bg); color: var(--danger); }
 .badge-rejected   { background: var(--danger-bg); color: var(--danger); }
-.badge-new        { background: #dbeafe; color: #3B6E8F; }
+.badge-new        { background: #ece7fb; color: var(--secondary); }
+
+/* ── Trust badge ── */
+.trust-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #ece7fb;
+  color: var(--secondary);
+}
+.trust-badge.top-rated { background: #fef3d9; color: #9a6b00; }
+.trust-badge.new-seller { background: var(--background); color: var(--muted); border: 1px solid var(--border); }
+
+/* ── Star rating ── */
+.star-rating { display: inline-flex; align-items: center; gap: 0.2rem; color: var(--star); }
+.star-rating .star-count { color: var(--muted); font-size: 0.8rem; margin-left: 0.25rem; font-weight: 600; }
+
+/* ── Quantity stepper ── */
+.qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.qty-stepper button {
+  background: var(--background);
+  color: var(--text);
+  border: none;
+  border-radius: 0;
+  padding: 0.4rem 0.75rem;
+  font-weight: 700;
+}
+.qty-stepper button:hover { background: var(--border); }
+.qty-stepper .qty-value {
+  padding: 0 0.9rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  min-width: 2ch;
+  text-align: center;
+}
+
+/* ── Compare bar ── */
+.compare-bar {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--primary);
+  color: white;
+  padding: 0.8rem 1.2rem;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 150;
+}
+
+/* ── Cart line item ── */
+.cart-line {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.cart-line:last-child { border-bottom: none; }
+.cart-line .image-container { width: 80px; height: 80px; margin-bottom: 0; }
 
 /* ── Skeleton loader ── */
 @keyframes shimmer {
@@ -511,7 +584,7 @@ label {
 .spec-table td:first-child { color: var(--muted); width: 40%; }
 .spec-table td:last-child { font-weight: 600; text-align: right; }
 
-/* ── Deal chip (comparison) ── */
+/* ── Deal chip (price-drop alerts) ── */
 .deal-chip {
   display: inline-flex;
   align-items: center;
@@ -520,6 +593,8 @@ label {
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 700;
+  background: var(--success-bg);
+  color: var(--success);
 }
 
 /* ── Tabs ── */

@@ -43,7 +43,7 @@ const LoginPage = () => {
       <div className="card" style={{ width: '400px' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h2 style={{ color: 'var(--primary)', marginBottom: '0.5rem' }}>Welcome Back</h2>
-          <p style={{ color: 'var(--muted)' }}>Sign in to AutoWave</p>
+          <p style={{ color: 'var(--muted)' }}>Sign in to Baskit</p>
         </div>
         
         {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
@@ -57,7 +57,7 @@ const LoginPage = () => {
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
               required 
-              placeholder="admin@autowave.com"
+              placeholder="admin@baskit.com"
             />
           </div>
           <div>
@@ -93,7 +93,7 @@ const LoginPage = () => {
         
         <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--muted)' }}>
           <p>Demo credentials:</p>
-          <p>Admin: admin@autowave.com / admin123</p>
+          <p>Admin: admin@baskit.com / admin123</p>
           <p>User: user0@example.com / password123</p>
         </div>
       </div>

@@ -6,33 +6,33 @@ from ..models import db_models
 
 
 class RecommendationEngine:
-    """Suggests similar cars — same body type or make, within a nearby price band."""
+    """Suggests similar products — same category or brand, within a nearby price band."""
 
-    async def get_similar_cars(self, db: AsyncSession, car: db_models.Car, limit: int = 6):
-        price_low = car.price * 0.7
-        price_high = car.price * 1.3
+    async def get_similar_products(self, db: AsyncSession, product: db_models.Product, limit: int = 6):
+        price_low = product.price * 0.7
+        price_high = product.price * 1.3
 
         query = (
-            select(db_models.Car)
-            .where(db_models.Car.id != car.id)
-            .where(db_models.Car.status == db_models.ListingStatus.AVAILABLE)
+            select(db_models.Product)
+            .where(db_models.Product.id != product.id)
+            .where(db_models.Product.status == db_models.ListingStatus.AVAILABLE)
             .where(
-                (db_models.Car.body_type == car.body_type)
-                | (db_models.Car.make == car.make)
+                (db_models.Product.category == product.category)
+                | (db_models.Product.brand == product.brand)
             )
-            .where(and_(db_models.Car.price >= price_low, db_models.Car.price <= price_high))
+            .where(and_(db_models.Product.price >= price_low, db_models.Product.price <= price_high))
             .limit(limit)
         )
         result = await db.execute(query)
         similar = result.scalars().all()
 
         if len(similar) < limit:
-            # Backfill with any other available cars if not enough close matches.
-            existing_ids = {c.id for c in similar} | {car.id}
+            # Backfill with any other available products if not enough close matches.
+            existing_ids = {p.id for p in similar} | {product.id}
             fallback_query = (
-                select(db_models.Car)
-                .where(db_models.Car.id.notin_(existing_ids))
-                .where(db_models.Car.status == db_models.ListingStatus.AVAILABLE)
+                select(db_models.Product)
+                .where(db_models.Product.id.notin_(existing_ids))
+                .where(db_models.Product.status == db_models.ListingStatus.AVAILABLE)
                 .limit(limit - len(similar))
             )
             fallback_result = await db.execute(fallback_query)
@@ -41,7 +41,7 @@ class RecommendationEngine:
         return similar
 
     async def get_recommendations_for_user(self, db: AsyncSession, user_id: int, limit: int = 8):
-        # Based on the user's most recent viewed car's body type; falls back to newest listings.
+        # Based on the user's most recently viewed product's category; falls back to newest listings.
         recent_view = await db.execute(
             select(db_models.Event)
             .where(db_models.Event.user_id == user_id)
@@ -52,15 +52,15 @@ class RecommendationEngine:
         event = recent_view.scalars().first()
 
         if event:
-            car_result = await db.execute(select(db_models.Car).where(db_models.Car.id == event.car_id))
-            car = car_result.scalars().first()
-            if car:
-                return await self.get_similar_cars(db, car, limit=limit)
+            product_result = await db.execute(select(db_models.Product).where(db_models.Product.id == event.product_id))
+            product = product_result.scalars().first()
+            if product:
+                return await self.get_similar_products(db, product, limit=limit)
 
         fallback = await db.execute(
-            select(db_models.Car)
-            .where(db_models.Car.status == db_models.ListingStatus.AVAILABLE)
-            .order_by(db_models.Car.created_at.desc())
+            select(db_models.Product)
+            .where(db_models.Product.status == db_models.ListingStatus.AVAILABLE)
+            .order_by(db_models.Product.created_at.desc())
             .limit(limit)
         )
         return fallback.scalars().all()

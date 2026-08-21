@@ -6,9 +6,6 @@ export const formatPrice = (price) =>
     maximumFractionDigits: 0,
   }).format(price || 0);
 
-export const formatMileage = (km) =>
-  `${new Intl.NumberFormat('en-IN').format(km || 0)} km`;
-
 export const formatDate = (dateStr) => {
   if (!dateStr) return '';
   return new Date(dateStr).toLocaleDateString('en-IN', {
